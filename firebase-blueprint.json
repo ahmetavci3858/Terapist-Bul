@@ -1,0 +1,199 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile for both service seekers and providers",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "displayName": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["seeker", "provider"] },
+        "photoURL": { "type": "string" },
+        "bio": { "type": "string" },
+        "city": { "type": "string" },
+        "age": { "type": "integer" },
+        "gender": { "type": "string" },
+        "height": { "type": "number" },
+        "weight": { "type": "number" },
+        "specialties": { "type": "array", "items": { "type": "string" } },
+        "diplomaURL": { "type": "string" },
+        "criminalRecordURL": { "type": "string" },
+        "rating": { "type": "number" },
+        "reviewCount": { "type": "integer" },
+        "phoneNumber": { "type": "string" },
+        "isPhoneVerified": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "isVerified": { "type": "boolean" }
+      },
+      "required": ["uid", "displayName", "email", "role"]
+    },
+    "ServiceRequest": {
+      "title": "ServiceRequest",
+      "description": "A request for a service created by a seeker",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "numericId": { "type": "integer", "description": "Short sequential ID for the request" },
+        "seekerId": { "type": "string" },
+        "seekerName": { "type": "string" },
+        "serviceTypes": { "type": "array", "items": { "type": "string" } },
+        "goals": { "type": "array", "items": { "type": "string" } },
+        "description": { "type": "string" },
+        "locationType": { "type": "string", "enum": ["online", "clinic", "home_office"] },
+        "userGender": { "type": "string" },
+        "preferredProviderGender": { "type": "string" },
+        "city": { "type": "string" },
+        "district": { "type": "string" },
+        "neighborhood": { "type": "string" },
+        "startDate": { "type": "string" },
+        "duration": { "type": "string" },
+        "sharePhone": { "type": "boolean" },
+        "phoneNumber": { "type": "string" },
+        "status": { "type": "string", "enum": ["open", "agreed", "closed"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["seekerId", "serviceTypes", "goals", "city", "status", "numericId"]
+    },
+    "Counter": {
+      "title": "Counter",
+      "description": "Sequential counters for various entities",
+      "type": "object",
+      "properties": {
+        "count": { "type": "integer" }
+      },
+      "required": ["count"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "A notification for a user",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "type": { "type": "string" },
+        "link": { "type": "string" },
+        "isRead": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "message", "isRead"]
+    },
+    "Mail": {
+      "title": "Mail",
+      "description": "Email to be sent via Trigger Email extension",
+      "type": "object",
+      "properties": {
+        "to": { "type": "string" },
+        "message": {
+          "type": "object",
+          "properties": {
+            "subject": { "type": "string" },
+            "text": { "type": "string" },
+            "html": { "type": "string" }
+          }
+        }
+      },
+      "required": ["to", "message"]
+    },
+    "Offer": {
+      "title": "Offer",
+      "description": "An offer made by a provider to a service request",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "requestId": { "type": "string" },
+        "providerId": { "type": "string" },
+        "providerName": { "type": "string" },
+        "message": { "type": "string" },
+        "isPaid": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["pending", "accepted", "rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["requestId", "providerId", "status"]
+    },
+    "Agreement": {
+      "title": "Agreement",
+      "description": "A mutual agreement between seeker and provider",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "requestId": { "type": "string" },
+        "providerId": { "type": "string" },
+        "seekerId": { "type": "string" },
+        "providerConfirmed": { "type": "boolean" },
+        "seekerConfirmed": { "type": "boolean" },
+        "agreedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["requestId", "providerId", "seekerId"]
+    },
+    "Review": {
+      "title": "Review",
+      "description": "A review left by a user for another user",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "fromId": { "type": "string" },
+        "toId": { "type": "string" },
+        "requestId": { "type": "string" },
+        "rating": { "type": "number" },
+        "comment": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["fromId", "toId", "requestId", "rating"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "A message sent between users within a request context",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "requestId": { "type": "string" },
+        "senderId": { "type": "string" },
+        "receiverId": { "type": "string" },
+        "text": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["requestId", "senderId", "receiverId", "text"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/requests/{requestId}": {
+      "schema": "ServiceRequest",
+      "description": "Service requests"
+    },
+    "/requests/{requestId}/offers/{offerId}": {
+      "schema": "Offer",
+      "description": "Offers for a specific request"
+    },
+    "/requests/{requestId}/messages/{messageId}": {
+      "schema": "Message",
+      "description": "Messages for a specific request"
+    },
+    "/agreements/{agreementId}": {
+      "schema": "Agreement",
+      "description": "Agreements between users"
+    },
+    "/reviews/{reviewId}": {
+      "schema": "Review",
+      "description": "User reviews"
+    },
+    "/counters/{counterId}": {
+      "schema": "Counter",
+      "description": "Sequential counters"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "User notifications"
+    },
+    "/mail/{mailId}": {
+      "schema": "Mail",
+      "description": "Email queue"
+    }
+  }
+}

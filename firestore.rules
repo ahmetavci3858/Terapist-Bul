@@ -1,0 +1,150 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+    function isValidString(field, min, max) {
+      return request.resource.data[field] is string && 
+             request.resource.data[field].size() >= min && 
+             request.resource.data[field].size() <= max;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && request.auth.token.email == "ahmetavci3858@gmail.com";
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+    function isValidUser(data) {
+      return data.uid is string && 
+             data.displayName is string && data.displayName.size() > 0 && data.displayName.size() < 100 &&
+             data.email is string && data.email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$") &&
+             data.role in ['seeker', 'provider', 'admin'] &&
+             (data.role != 'admin' || data.email == "ahmetavci3858@gmail.com") &&
+             (!('photoURL' in data) || (data.photoURL is string || data.photoURL == null)) &&
+             (!('updatedAt' in data) || data.updatedAt is string) &&
+             (!('age' in data) || (data.age is number && data.age >= 0 && data.age <= 120)) &&
+             (!('gender' in data) || data.gender in ['Erkek', 'Kadın', 'Belirtilmedi']) &&
+             (!('height' in data) || data.height is number) &&
+             (!('weight' in data) || data.weight is number) &&
+             (!('phoneNumber' in data) || data.phoneNumber is string) &&
+             (!('isPhoneVerified' in data) || data.isPhoneVerified is bool) &&
+             (!('city' in data) || data.city is string) &&
+             (!('bio' in data) || data.bio is string && data.bio.size() < 2000) &&
+             (!('createdAt' in data) || data.createdAt is string) &&
+             (!('setupComplete' in data) || data.setupComplete is bool) &&
+             (!('rating' in data) || data.rating is number) &&
+             (!('reviewCount' in data) || data.reviewCount is number) &&
+             (!('specialties' in data) || data.specialties is list) &&
+             (!('subSpecialties' in data) || data.subSpecialties is list) &&
+             (!('diplomaURL' in data) || data.diplomaURL is string) &&
+             (!('criminalRecordURL' in data) || data.criminalRecordURL is string) &&
+             (!('status' in data) || data.status in ['pending', 'approved', 'rejected']) &&
+             (!('isVerified' in data) || data.isVerified is bool);
+    }
+
+    function isValidRequest(data) {
+      return data.seekerId is string && 
+             data.serviceTypes is list &&
+             data.status in ['open', 'agreed', 'closed'] &&
+             data.numericId is number &&
+             (!('description' in data) || (data.description is string && data.description.size() < 2000)) &&
+             (!('locationType' in data) || data.locationType in ['online', 'clinic', 'home_office']) &&
+             (!('goals' in data) || data.goals is list) &&
+             (!('userGender' in data) || data.userGender is string) &&
+             (!('preferredProviderGender' in data) || data.preferredProviderGender is string) &&
+             (!('city' in data) || data.city is string) &&
+             (!('district' in data) || data.district is string) &&
+             (!('neighborhood' in data) || data.neighborhood is string) &&
+             (!('startDate' in data) || data.startDate is string) &&
+             (!('duration' in data) || data.duration is string) &&
+             (!('sharePhone' in data) || data.sharePhone is bool) &&
+             (!('phoneNumber' in data) || data.phoneNumber is string) &&
+             (!('seekerName' in data) || data.seekerName is string) &&
+             (!('createdAt' in data) || (data.createdAt is timestamp || data.createdAt is string));
+    }
+
+    function isValidOffer(data) {
+      return data.requestId is string && 
+             data.providerId is string && 
+             data.status in ['pending', 'accepted', 'rejected'] &&
+             (!('message' in data) || (data.message is string && data.message.size() < 1000)) &&
+             (!('providerName' in data) || data.providerName is string) &&
+             (!('isPaid' in data) || data.isPaid is bool) &&
+             (!('createdAt' in data) || (data.createdAt is string || data.createdAt is timestamp));
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if (isOwner(userId) || isAdmin() || (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rating', 'reviewCount']))) && isValidUser(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /requests/{requestId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.seekerId == request.auth.uid && isValidRequest(request.resource.data);
+      allow update: if (isAuthenticated() && (resource.data.seekerId == request.auth.uid || exists(/databases/$(database)/documents/requests/$(requestId)/offers/$(request.auth.uid))) && isValidRequest(request.resource.data)) || isAdmin();
+      allow delete: if isAdmin();
+      
+      match /offers/{offerId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated() && request.resource.data.providerId == request.auth.uid && isValidOffer(request.resource.data);
+        allow update: if (isAuthenticated() && (resource.data.providerId == request.auth.uid || get(/databases/$(database)/documents/requests/$(requestId)).data.seekerId == request.auth.uid) && isValidOffer(request.resource.data)) || isAdmin();
+        allow delete: if isAdmin();
+      }
+
+      match /messages/{messageId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated() && (request.resource.data.senderId == request.auth.uid);
+      }
+    }
+
+    match /agreements/{agreementId} {
+      allow read: if isAuthenticated() && (resource.data.providerId == request.auth.uid || resource.data.seekerId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && (request.resource.data.providerId == request.auth.uid || request.resource.data.seekerId == request.auth.uid);
+      allow update: if (isAuthenticated() && (resource.data.providerId == request.auth.uid || resource.data.seekerId == request.auth.uid)) || isAdmin();
+    }
+
+    match /reviews/{reviewId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.fromId == request.auth.uid;
+      allow delete: if isAdmin();
+    }
+
+    match /counters/{counterId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    match /mail/{mailId} {
+      allow create: if isAuthenticated();
+      allow read: if isAdmin();
+      allow update, delete: if isAdmin();
+    }
+  }
+}
