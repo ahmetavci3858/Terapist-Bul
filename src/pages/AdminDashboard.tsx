@@ -41,6 +41,9 @@ const AdminDashboard: React.FC = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ collection: string, id: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [notification, setNotification] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
 
   const isAdmin = user?.email === 'ahmetavci3858@gmail.com';
 
@@ -83,19 +86,27 @@ const AdminDashboard: React.FC = () => {
   }
 
   const handleDelete = async (collectionName: string, id: string) => {
-    if (!window.confirm('Bu kaydı silmek istediğinize emin misiniz? Bu işlem geri alınamaz.')) return;
+    setDeleteConfirm({ collection: collectionName, id });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteConfirm) return;
+    setIsDeleting(true);
     try {
-      await deleteDoc(doc(db, collectionName, id));
-      if (collectionName === 'users') {
-        setSeekers(seekers.filter(s => s.id !== id));
-        setProviders(providers.filter(p => p.id !== id));
+      await deleteDoc(doc(db, deleteConfirm.collection, deleteConfirm.id));
+      if (deleteConfirm.collection === 'users') {
+        setSeekers(seekers.filter(s => s.id !== deleteConfirm.id));
+        setProviders(providers.filter(p => p.id !== deleteConfirm.id));
       } else {
-        setRequests(requests.filter(r => r.id !== id));
+        setRequests(requests.filter(r => r.id !== deleteConfirm.id));
       }
-      alert('Kayıt başarıyla silindi.');
+      setNotification({ message: 'Kayıt başarıyla silindi.', type: 'success' });
+      setDeleteConfirm(null);
     } catch (error) {
       console.error('Delete error:', error);
-      alert('Silme işlemi sırasında bir hata oluştu.');
+      setNotification({ message: 'Silme işlemi sırasında bir hata oluştu.', type: 'error' });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -108,10 +119,13 @@ const AdminDashboard: React.FC = () => {
       const updateList = (list: any[]) => list.map(u => u.id === userId ? { ...u, status, isVerified: status === 'approved' } : u);
       setSeekers(updateList(seekers));
       setProviders(updateList(providers));
-      alert(`Kullanıcı durumu '${status === 'approved' ? 'Onaylandı' : 'Reddedildi'}' olarak güncellendi.`);
+      setNotification({ 
+        message: `Kullanıcı durumu '${status === 'approved' ? 'Onaylandı' : 'Reddedildi'}' olarak güncellendi.`, 
+        type: 'success' 
+      });
     } catch (error) {
       console.error('Status update error:', error);
-      alert('Güncelleme sırasında bir hata oluştu.');
+      setNotification({ message: 'Güncelleme sırasında bir hata oluştu.', type: 'error' });
     }
   };
 
@@ -143,7 +157,7 @@ const AdminDashboard: React.FC = () => {
     }
 
     if (dataToExport.length === 0) {
-      alert('Dışa aktarılacak veri bulunamadı.');
+      setNotification({ message: 'Dışa aktarılacak veri bulunamadı.', type: 'error' });
       return;
     }
 
@@ -492,7 +506,7 @@ const AdminDashboard: React.FC = () => {
                         <Info size={20} />
                       </button>
                       <button
-                        onClick={() => handleDelete(activeTab === 'requests' ? 'requests' : 'users', item.id)}
+                        onClick={() => handleDelete((activeTab === 'requests' && subTab === 'requests') ? 'requests' : 'users', item.id)}
                         className="p-3 bg-stone-100 text-stone-600 rounded-xl hover:bg-red-600 hover:text-white transition-all shadow-sm"
                         title="Sil"
                       >
@@ -582,7 +596,7 @@ const AdminDashboard: React.FC = () => {
                             <Info size={16} />
                           </button>
                           <button
-                            onClick={() => handleDelete(activeTab === 'requests' ? 'requests' : 'users', item.id)}
+                            onClick={() => handleDelete((activeTab === 'requests' && subTab === 'requests') ? 'requests' : 'users', item.id)}
                             className="p-2 bg-stone-100 text-stone-600 rounded-lg hover:bg-red-600 hover:text-white transition-all shadow-sm"
                             title="Sil"
                           >
@@ -608,6 +622,68 @@ const AdminDashboard: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Notification Toast */}
+      <AnimatePresence>
+        {notification && (
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            className={`fixed bottom-8 right-8 z-[200] px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 font-bold text-white ${
+              notification.type === 'success' ? 'bg-emerald-600' : 'bg-red-600'
+            }`}
+          >
+            {notification.type === 'success' ? <CheckCircle2 size={20} /> : <XCircle size={20} />}
+            {notification.message}
+            <button onClick={() => setNotification(null)} className="ml-2 hover:opacity-70">
+              <X size={18} />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {deleteConfirm && (
+          <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-stone-900/80 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="bg-white w-full max-w-md rounded-[2.5rem] p-8 shadow-2xl space-y-6"
+            >
+              <div className="w-16 h-16 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center mx-auto">
+                <Trash2 size={32} />
+              </div>
+              <div className="text-center space-y-2">
+                <h2 className="text-2xl font-black text-stone-900">Emin misiniz?</h2>
+                <p className="text-stone-500">Bu kaydı silmek istediğinize emin misiniz? Bu işlem geri alınamaz.</p>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setDeleteConfirm(null)}
+                  disabled={isDeleting}
+                  className="flex-1 px-6 py-4 rounded-2xl font-bold text-stone-600 bg-stone-100 hover:bg-stone-200 transition-all"
+                >
+                  Vazgeç
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  disabled={isDeleting}
+                  className="flex-1 px-6 py-4 rounded-2xl font-bold text-white bg-red-600 hover:bg-red-700 transition-all shadow-lg shadow-red-100 flex items-center justify-center gap-2"
+                >
+                  {isDeleting ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    'Evet, Sil'
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Details Modal */}
       <AnimatePresence>

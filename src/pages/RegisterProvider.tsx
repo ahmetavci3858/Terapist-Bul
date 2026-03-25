@@ -161,7 +161,7 @@ const RegisterProvider: React.FC = () => {
 
     try {
       console.log('Starting registration for provider:', formData.email);
-      const trimmedEmail = formData.email.trim();
+      const trimmedEmail = formData.email.trim().toLowerCase();
       const { user } = await createUserWithEmailAndPassword(auth, trimmedEmail, formData.password);
       console.log('User created in Auth:', user.uid);
       

@@ -1,6 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword } from 'firebase/auth';
+import { 
+  signInWithPopup, 
+  GoogleAuthProvider, 
+  signInWithEmailAndPassword,
+  sendPasswordResetEmail 
+} from 'firebase/auth';
 import { auth, db } from '../firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { motion } from 'motion/react';
@@ -22,6 +27,9 @@ const AuthPage: React.FC = () => {
     setError(null);
     try {
       const provider = new GoogleAuthProvider();
+      // Add custom parameters to force account selection if needed
+      provider.setCustomParameters({ prompt: 'select_account' });
+      
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
 
@@ -66,16 +74,21 @@ const AuthPage: React.FC = () => {
       if (error.code === 'auth/cancelled-popup-request') {
         message = 'Giriş penceresi kapatıldı veya başka bir işlem başlatıldı.';
       } else if (error.code === 'auth/popup-closed-by-user') {
-        message = 'Giriş penceresi kullanıcı tarafından kapatıldı.';
+        message = 'Giriş penceresi kapatıldı. Lütfen tekrar deneyin.';
+      } else if (error.code === 'auth/unauthorized-domain') {
+        const currentDomain = window.location.hostname;
+        message = `Bu alan adı (${currentDomain}) Firebase konsolunda yetkilendirilmemiş. Lütfen Firebase konsolundan Authentication > Settings > Authorized Domains kısmına bu adresi ekleyin.`;
+      } else if (error.code === 'auth/operation-not-allowed') {
+        message = 'Google ile giriş yöntemi Firebase konsolunda (Authentication > Sign-in method) henüz etkinleştirilmemiş.';
+      } else if (error.code === 'auth/popup-blocked') {
+        message = 'Giriş penceresi tarayıcı tarafından engellendi. Lütfen adres çubuğundaki pop-up engelleyiciyi kapatıp tekrar deneyin.';
       } else if (error.code === 'auth/internal-error') {
-        message = 'Bir iç hata oluştu. Lütfen tarayıcınızı yenileyip tekrar deneyin.';
+        message = `Bir iç hata oluştu (${error.code}). Lütfen tarayıcınızı yenileyip tekrar deneyin.`;
       } else if (error.code === 'auth/network-request-failed') {
-        message = 'Ağ bağlantısı hatası. Lütfen internet bağlantınızı kontrol edin.';
-      } else if (error.message && error.message.includes('INTERNAL ASSERTION FAILED')) {
-        message = 'Sistemsel bir hata oluştu. Lütfen sayfayı yenileyip tekrar deneyin.';
+        message = 'Ağ bağlantısı hatası. İnternet bağlantınızı veya Firebase bağlantı izinlerini kontrol edin.';
+      } else {
+        message = `Giriş hatası (${error.code || 'Bilinmeyen'}): ${error.message || 'Lütfen tekrar deneyin.'}`;
       }
-      
-      setError(message);
     } finally {
       setLoading(false);
     }
@@ -86,21 +99,23 @@ const AuthPage: React.FC = () => {
     if (loading) return;
     setLoading(true);
     setError(null);
-    if (!email || !email.includes('@') || !email.includes('.')) {
+    
+    const trimmedEmail = email.trim().toLowerCase();
+    if (!trimmedEmail || !trimmedEmail.includes('@') || !trimmedEmail.includes('.')) {
       setError('Lütfen geçerli bir e-posta adresi girin.');
       setLoading(false);
       return;
     }
 
     try {
-      await signInWithEmailAndPassword(auth, email.trim(), password);
+      await signInWithEmailAndPassword(auth, trimmedEmail, password);
       navigate('/dashboard');
     } catch (error: any) {
       console.error('Email login error:', error);
       let message = 'Giriş yapılırken bir hata oluştu.';
       
       if (error.code === 'auth/invalid-credential') {
-        message = 'E-posta adresi veya şifre hatalı. Lütfen bilgilerinizi kontrol edin.';
+        message = 'E-posta adresi veya şifre hatalı. Eğer daha önce Google ile kayıt olduysanız lütfen Google butonunu kullanın.';
       } else if (error.code === 'auth/user-not-found') {
         message = 'Bu e-posta adresi ile kayıtlı bir kullanıcı bulunamadı.';
       } else if (error.code === 'auth/wrong-password') {
@@ -212,7 +227,27 @@ const AuthPage: React.FC = () => {
             />
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-bold text-stone-700">Şifre</label>
+            <div className="flex justify-between items-center">
+              <label className="text-sm font-bold text-stone-700">Şifre</label>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!email) {
+                    setError('Şifre sıfırlama bağlantısı için lütfen e-posta adresinizi girin.');
+                    return;
+                  }
+                  try {
+                    await sendPasswordResetEmail(auth, email.trim().toLowerCase());
+                    alert('Şifre sıfırlama bağlantısı e-posta adresinize gönderildi.');
+                  } catch (err: any) {
+                    setError('Şifre sıfırlama e-postası gönderilirken bir hata oluştu.');
+                  }
+                }}
+                className="text-xs text-sky-600 font-bold hover:underline"
+              >
+                Şifremi Unuttum
+              </button>
+            </div>
             <input
               type="password"
               required
