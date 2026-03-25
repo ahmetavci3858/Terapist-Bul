@@ -164,18 +164,18 @@ const CreateRequest: React.FC = () => {
     throw new Error(JSON.stringify(errInfo));
   };
 
- const handleSubmit = async () => {
+const handleSubmit = async () => {
     if (!user) return;
     setLoading(true);
     try {
       // 1. İşlem: Numeric ID Alımı
       const newNumericId = await runTransaction(db, async (transaction) => {
         const counterRef = doc(db, 'counters', 'requests');
-        const counterSnap = await transaction.get(counterRef);
+        let counterSnap = await transaction.get(counterRef);
         
         let newCount = 1;
         if (counterSnap.exists()) {
-          newCount = (counterSnap.data().count || 0) + 1;
+          newCount = counterSnap.data().count + 1;
           transaction.update(counterRef, { count: newCount });
         } else {
           transaction.set(counterRef, { count: 1 });
@@ -200,7 +200,7 @@ const CreateRequest: React.FC = () => {
       setRequestId(requestRef.id);
       setSuccess(true);
 
-      // 3. İşlem: Uzmanlara Bildirimler
+      // 3. İşlem: Bildirimler ve Mail Kayıtları
       const providersQuery = query(
         collection(db, 'users'),
         where('role', '==', 'provider'),
@@ -210,8 +210,8 @@ const CreateRequest: React.FC = () => {
       
       const providersSnap = await getDocs(providersQuery);
       
-      const notificationPromises = providersSnap.docs.map(providerDoc => 
-        addDoc(collection(db, 'notifications'), {
+      const notificationPromises = providersSnap.docs.map(providerDoc => {
+        return addDoc(collection(db, 'notifications'), {
           userId: providerDoc.id,
           title: 'Yeni Hizmet Talebi',
           message: `${selectedServices.join(', ')} alanında yeni bir talep oluşturuldu.`,
@@ -219,23 +219,24 @@ const CreateRequest: React.FC = () => {
           link: `/request/${requestRef.id}`,
           isRead: false,
           createdAt: serverTimestamp()
-        })
-      );
+        });
+      });
 
-      const mailPromises = providersSnap.docs.map(providerDoc => 
-        addDoc(collection(db, 'mail'), {
-          to: providerDoc.data().email,
+      const mailPromises = providersSnap.docs.map(providerDoc => {
+        const providerData = providerDoc.data();
+        return addDoc(collection(db, 'mail'), {
+          to: providerData.email,
           message: {
             subject: `Yeni Talep: ${selectedServices.join(', ')}`,
-            text: `Sistemde yeni bir talep var.`,
+            text: `Yeni talep var. Detaylar için uygulamayı ziyaret edin.`,
             html: `<p><strong>${selectedServices.join(', ')}</strong> alanında yeni bir talep var.</p>`
           }
-        })
-      );
+        });
+      });
 
       await Promise.all([...notificationPromises, ...mailPromises]);
 
-      // 4. İşlem: E-POSTA API (Resend)
+      // 4. İşlem: Resend API üzerinden gerçek mail gönderimi
       try {
         await fetch('/api/send-email', {
           method: 'POST',
@@ -248,9 +249,9 @@ const CreateRequest: React.FC = () => {
           }),
         });
       } catch (e) {
-        console.error('Mail API Hatası:', e);
+        console.error('Email API hatası:', e);
       }
-      
+
       setTimeout(() => {
         navigate('/');
       }, 10000);
