@@ -261,7 +261,21 @@ const CreateRequest: React.FC = () => {
       });
 
       await Promise.all([...notificationPromises, ...mailPromises]);
-      
+
+      try {
+        await fetch('/api/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            isim: profile?.displayName || user.displayName || 'İsimsiz Kullanıcı',
+            telefon: formData.phoneNumber,
+            brans: selectedServices.join(', '),
+            mesaj: `Talep No: #${newNumericId}\nKonum: ${formData.city}/${formData.district}\nDetay: ${formData.description}`
+          }),
+        });
+      } catch (emailError) {
+        console.error('E-posta bildirimi gönderilemedi:', emailError);
+        
       // Auto redirect after 10 seconds
       setTimeout(() => {
         navigate('/');
