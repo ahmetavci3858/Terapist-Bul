@@ -260,8 +260,8 @@ const CreateRequest: React.FC = () => {
         });
       });
 
-      await Promise.all([...notificationPromises, ...mailPromises]);
-
+     await Promise.all([...notificationPromises, ...mailPromises]);
+      
       try {
         await fetch('/api/send-email', {
           method: 'POST',
@@ -275,13 +275,13 @@ const CreateRequest: React.FC = () => {
         });
       } catch (emailError) {
         console.error('E-posta bildirimi gönderilemedi:', emailError);
-        
-      // Auto redirect after 10 seconds
+      }
+
       setTimeout(() => {
         navigate('/');
       }, 10000);
-}
-    } catch (error) { // İşte o hata veren catch burası, üstte bir parantez eksik kalmış
+
+    } catch (error) {
       console.error('Error creating request:', error);
       alert('Talep oluşturulurken bir hata oluştu.');
     } finally {
