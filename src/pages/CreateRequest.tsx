@@ -280,7 +280,8 @@ const CreateRequest: React.FC = () => {
       setTimeout(() => {
         navigate('/');
       }, 10000);
-    } catch (error) {
+
+    } catch (error) { // İşte o hata veren catch burası, üstte bir parantez eksik kalmış
       console.error('Error creating request:', error);
       alert('Talep oluşturulurken bir hata oluştu.');
     } finally {
