@@ -168,16 +168,9 @@ const CreateRequest: React.FC = () => {
     if (!user) return;
     setLoading(true);
     try {
-      // Use a transaction to get a sequential numeric ID
       const newNumericId = await runTransaction(db, async (transaction) => {
         const counterRef = doc(db, 'counters', 'requests');
-        let counterSnap;
-        try {
-          counterSnap = await transaction.get(counterRef);
-        } catch (error) {
-          handleFirestoreError(error, OperationType.GET, 'counters/requests');
-          throw error;
-        }
+        let counterSnap = await transaction.get(counterRef);
         
         let newCount = 1;
         if (counterSnap.exists()) {
@@ -190,26 +183,21 @@ const CreateRequest: React.FC = () => {
       });
 
       const requestRef = doc(db, 'requests', `TALEP-${newNumericId}`);
-      try {
-        await setDoc(requestRef, {
-          ...formData,
-          numericId: newNumericId,
-          serviceTypes: selectedServices,
-          seekerId: user.uid,
-          seekerName: profile?.displayName || user.displayName || 'İsimsiz Kullanıcı',
-          seekerEmail: user.email,
-          status: 'open',
-          createdAt: serverTimestamp(),
-        });
-      } catch (error) {
-        handleFirestoreError(error, OperationType.WRITE, `requests/TALEP-${newNumericId}`);
-      }
+      await setDoc(requestRef, {
+        ...formData,
+        numericId: newNumericId,
+        serviceTypes: selectedServices,
+        seekerId: user.uid,
+        seekerName: profile?.displayName || user.displayName || 'İsimsiz Kullanıcı',
+        seekerEmail: user.email,
+        status: 'open',
+        createdAt: serverTimestamp(),
+      });
       
       setNumericId(newNumericId);
       setRequestId(requestRef.id);
       setSuccess(true);
 
-      // 1. Create notifications for relevant providers
       const providersQuery = query(
         collection(db, 'users'),
         where('role', '==', 'provider'),
@@ -217,13 +205,7 @@ const CreateRequest: React.FC = () => {
         where('specialties', 'array-contains-any', selectedServices)
       );
       
-      let providersSnap;
-      try {
-        providersSnap = await getDocs(providersQuery);
-      } catch (error) {
-        handleFirestoreError(error, OperationType.LIST, 'users');
-        throw error;
-      }
+      const providersSnap = await getDocs(providersQuery);
       
       const notificationPromises = providersSnap.docs.map(providerDoc => {
         return addDoc(collection(db, 'notifications'), {
@@ -234,34 +216,24 @@ const CreateRequest: React.FC = () => {
           link: `/request/${requestRef.id}`,
           isRead: false,
           createdAt: serverTimestamp()
-        }).catch(error => {
-          handleFirestoreError(error, OperationType.CREATE, 'notifications');
         });
       });
 
-      // 2. Create simulated email notifications
       const mailPromises = providersSnap.docs.map(providerDoc => {
         const providerData = providerDoc.data();
-        // Mask name: "Ahmet Avcı" -> "A**** A***"
-        const maskName = (name: string) => {
-          return name.split(' ').map(part => part[0] + '*'.repeat(part.length - 1)).join(' ');
-        };
-        const maskedSeekerName = maskName(profile?.displayName || user.displayName || 'İsimsiz Kullanıcı');
-
         return addDoc(collection(db, 'mail'), {
           to: providerData.email,
           message: {
             subject: `Yeni Talep: ${selectedServices.join(', ')}`,
-            text: `Sayın Uzman, ${selectedServices.join(', ')} alanında yeni bir talep var. Talep Sahibi: ${maskedSeekerName}. Detaylar için uygulamayı ziyaret edin.`,
-            html: `<p>Sayın Uzman,</p><p><strong>${selectedServices.join(', ')}</strong> alanında yeni bir talep var.</p><p>Talep Sahibi: ${maskedSeekerName}</p><p>Detaylar için uygulamayı ziyaret edin.</p>`
+            text: `Yeni talep var. Detaylar için uygulamayı ziyaret edin.`,
+            html: `<p><strong>${selectedServices.join(', ')}</strong> alanında yeni bir talep var.</p>`
           }
-        }).catch(error => {
-          handleFirestoreError(error, OperationType.CREATE, 'mail');
         });
       });
 
-     await Promise.all([...notificationPromises, ...mailPromises]);
-      
+      await Promise.all([...notificationPromises, ...mailPromises]);
+
+      // --- RESEND E-POSTA TETİKLEYİCİ ---
       try {
         await fetch('/api/send-email', {
           method: 'POST',
@@ -273,8 +245,8 @@ const CreateRequest: React.FC = () => {
             mesaj: `Talep No: #${newNumericId}\nKonum: ${formData.city}/${formData.district}\nDetay: ${formData.description}`
           }),
         });
-      } catch (emailError) {
-        console.error('E-posta bildirimi gönderilemedi:', emailError);
+      } catch (e) {
+        console.error('Email API hatası:', e);
       }
 
       setTimeout(() => {
