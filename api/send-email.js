@@ -8,7 +8,7 @@ export default async function handler(req, res) {
   try {
     const data = await resend.emails.send({
       from: 'Terapist Bul <onboarding@resend.dev>',
-      to: ['ahmetavci@terapistbul.com.tr'], // Senin e-posta adresin
+      to: ['ahmetavci3858@gmail.com'], // Senin e-posta adresin
       subject: `[SİTE TALEBİ] - ${brans}`,
       html: `
         <h3>Yeni Talep Bildirimi</h3>
