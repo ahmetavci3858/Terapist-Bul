@@ -325,5 +325,5 @@ const handleSubmit = async () => {
                     const newGoals = formData.goals.includes(goal)
                       ? formData.goals.filter(g => g !== goal)
                       : [...formData.goals, goal];
-                    setFormData({ ...formData, goals: new
+                    setFormData({ ...formData, goals: newGoals });
 
