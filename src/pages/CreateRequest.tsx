@@ -164,14 +164,20 @@ const CreateRequest: React.FC = () => {
     throw new Error(JSON.stringify(errInfo));
   };
 
-const handleSubmit = async () => {
+  const handleSubmit = async () => {
     if (!user) return;
     setLoading(true);
     try {
-      // 1. İşlem: Numeric ID Alımı
+      // Use a transaction to get a sequential numeric ID
       const newNumericId = await runTransaction(db, async (transaction) => {
         const counterRef = doc(db, 'counters', 'requests');
-        let counterSnap = await transaction.get(counterRef);
+        let counterSnap;
+        try {
+          counterSnap = await transaction.get(counterRef);
+        } catch (error) {
+          handleFirestoreError(error, OperationType.GET, 'counters/requests');
+          throw error;
+        }
         
         let newCount = 1;
         if (counterSnap.exists()) {
@@ -183,24 +189,27 @@ const handleSubmit = async () => {
         return newCount;
       });
 
-      // 2. İşlem: Firestore Kaydı
       const requestRef = doc(db, 'requests', `TALEP-${newNumericId}`);
-      await setDoc(requestRef, {
-        ...formData,
-        numericId: newNumericId,
-        serviceTypes: selectedServices,
-        seekerId: user.uid,
-        seekerName: profile?.displayName || user.displayName || 'İsimsiz Kullanıcı',
-        seekerEmail: user.email,
-        status: 'open',
-        createdAt: serverTimestamp(),
-      });
+      try {
+        await setDoc(requestRef, {
+          ...formData,
+          numericId: newNumericId,
+          serviceTypes: selectedServices,
+          seekerId: user.uid,
+          seekerName: profile?.displayName || user.displayName || 'İsimsiz Kullanıcı',
+          seekerEmail: user.email,
+          status: 'open',
+          createdAt: serverTimestamp(),
+        });
+      } catch (error) {
+        handleFirestoreError(error, OperationType.WRITE, `requests/TALEP-${newNumericId}`);
+      }
       
       setNumericId(newNumericId);
       setRequestId(requestRef.id);
       setSuccess(true);
 
-      // 3. İşlem: Bildirimler ve Mail Kayıtları
+      // 1. Create notifications for relevant providers
       const providersQuery = query(
         collection(db, 'users'),
         where('role', '==', 'provider'),
@@ -208,7 +217,13 @@ const handleSubmit = async () => {
         where('specialties', 'array-contains-any', selectedServices)
       );
       
-      const providersSnap = await getDocs(providersQuery);
+      let providersSnap;
+      try {
+        providersSnap = await getDocs(providersQuery);
+      } catch (error) {
+        handleFirestoreError(error, OperationType.LIST, 'users');
+        throw error;
+      }
       
       const notificationPromises = providersSnap.docs.map(providerDoc => {
         return addDoc(collection(db, 'notifications'), {
@@ -219,43 +234,38 @@ const handleSubmit = async () => {
           link: `/request/${requestRef.id}`,
           isRead: false,
           createdAt: serverTimestamp()
+        }).catch(error => {
+          handleFirestoreError(error, OperationType.CREATE, 'notifications');
         });
       });
 
+      // 2. Create simulated email notifications
       const mailPromises = providersSnap.docs.map(providerDoc => {
         const providerData = providerDoc.data();
+        // Mask name: "Ahmet Avcı" -> "A**** A***"
+        const maskName = (name: string) => {
+          return name.split(' ').map(part => part[0] + '*'.repeat(part.length - 1)).join(' ');
+        };
+        const maskedSeekerName = maskName(profile?.displayName || user.displayName || 'İsimsiz Kullanıcı');
+
         return addDoc(collection(db, 'mail'), {
           to: providerData.email,
           message: {
             subject: `Yeni Talep: ${selectedServices.join(', ')}`,
-            text: `Yeni talep var. Detaylar için uygulamayı ziyaret edin.`,
-            html: `<p><strong>${selectedServices.join(', ')}</strong> alanında yeni bir talep var.</p>`
+            text: `Sayın Uzman, ${selectedServices.join(', ')} alanında yeni bir talep var. Talep Sahibi: ${maskedSeekerName}. Detaylar için uygulamayı ziyaret edin.`,
+            html: `<p>Sayın Uzman,</p><p><strong>${selectedServices.join(', ')}</strong> alanında yeni bir talep var.</p><p>Talep Sahibi: ${maskedSeekerName}</p><p>Detaylar için uygulamayı ziyaret edin.</p>`
           }
+        }).catch(error => {
+          handleFirestoreError(error, OperationType.CREATE, 'mail');
         });
       });
 
       await Promise.all([...notificationPromises, ...mailPromises]);
-
-      // 4. İşlem: Resend API üzerinden gerçek mail gönderimi
-      try {
-        await fetch('/api/send-email', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            isim: profile?.displayName || user.displayName || 'İsimsiz Kullanıcı',
-            telefon: formData.phoneNumber,
-            brans: selectedServices.join(', '),
-            mesaj: `Talep No: #${newNumericId}\nKonum: ${formData.city}/${formData.district}\nDetay: ${formData.description}`
-          }),
-        });
-      } catch (e) {
-        console.error('Email API hatası:', e);
-      }
-
+      
+      // Auto redirect after 10 seconds
       setTimeout(() => {
         navigate('/');
       }, 10000);
-
     } catch (error) {
       console.error('Error creating request:', error);
       alert('Talep oluşturulurken bir hata oluştu.');
@@ -263,7 +273,7 @@ const handleSubmit = async () => {
       setLoading(false);
     }
   };
-  
+
   const renderStep = () => {
     switch (step) {
       case 1:
@@ -325,35 +335,29 @@ const handleSubmit = async () => {
                     const newGoals = formData.goals.includes(goal)
                       ? formData.goals.filter(g => g !== goal)
                       : [...formData.goals, goal];
-                   setFormData({ ...formData, goals: newGoals });
-                      })
-                    }}
-                    className={`p-6 rounded-lg border-2 transition-all ${
-                      formData.goals.includes(goal)
-                        ? 'border-sky-600 bg-sky-50 text-sky-700'
-                        : 'border-stone-100 hover:border-stone-200 bg-white text-stone-600'
-                    }`}
-                  >
-                    <Target size={24} />
-                    <span className="font-semibold text-sm">{goal}</span>
-                  </button>
-                ))
-              }
+                    setFormData({ ...formData, goals: newGoals });
+                  }}
+                  className={`p-4 rounded-2xl border-2 transition-all text-left flex items-center justify-between ${
+                    formData.goals.includes(goal)
+                      ? 'border-sky-600 bg-sky-50 text-sky-700'
+                      : 'border-stone-100 hover:border-stone-200 bg-white text-stone-700'
+                  }`}
+                >
+                  <span className="font-semibold">{goal}</span>
+                  {formData.goals.includes(goal) && <CheckCircle2 size={20} className="text-sky-600" />}
+                </button>
+              ))}
             </div>
-            <div className="flex gap-4 pt-4">
-              <button
-                onClick={prevStep}
-                className="flex-1 px-6 py-3 border-2 border-stone-200 rounded-lg hover:bg-stone-50 transition-colors font-semibold flex items-center justify-center gap-2"
-              >
-                <ArrowLeft size={20} />
-                Geri
+            <div className="flex justify-between pt-4">
+              <button onClick={prevStep} className="flex items-center gap-2 text-stone-500 font-bold px-6 py-3">
+                <ArrowLeft size={20} /> Geri
               </button>
-              <button
-                onClick={nextStep}
-                className="flex-1 px-6 py-3 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition-colors font-semibold flex items-center justify-center gap-2"
+              <button 
+                disabled={formData.goals.length === 0}
+                onClick={nextStep} 
+                className="bg-stone-900 text-white px-8 py-3 rounded-2xl font-bold flex items-center gap-2 disabled:opacity-50"
               >
-                İleri
-                <ArrowRight size={20} />
+                Devam Et <ArrowRight size={20} />
               </button>
             </div>
           </motion.div>
@@ -364,68 +368,69 @@ const handleSubmit = async () => {
           <motion.div 
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="space-y-6"
+            className="space-y-8"
           >
             <div className="text-center space-y-2">
-              <h2 className="text-2xl font-bold text-stone-900">Demografik Bilgiler</h2>
-              <p className="text-stone-500">Uzmanın sizin için en uygun şekilde hazırlanması için bilgiler gerekli.</p>
+              <h2 className="text-2xl font-bold text-stone-900">Cinsiyet Tercihleri</h2>
+              <p className="text-stone-500">Hizmet konforunuz için tercihlerinizi belirtin.</p>
+            </div>
+            
+            <div className="space-y-4">
+              <label className="text-sm font-bold text-stone-400 uppercase tracking-widest">Sizin Cinsiyetiniz</label>
+              <div className="grid grid-cols-2 gap-3">
+                {['Kadın', 'Erkek'].map(g => (
+                  <button
+                    key={g}
+                    onClick={() => setFormData({ ...formData, userGender: g })}
+                    className={`p-4 rounded-2xl border-2 transition-all font-bold ${
+                      formData.userGender === g 
+                        ? 'border-sky-600 bg-sky-50 text-sky-700' 
+                        : 'border-stone-100 bg-white text-stone-600'
+                    }`}
+                  >
+                    {g}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-stone-700 mb-2">Cinsiyetiniz</label>
-                <select
-                  value={formData.userGender}
-                  onChange={(e) => setFormData({ ...formData, userGender: e.target.value })}
-                  className="w-full px-4 py-3 border-2 border-stone-200 rounded-lg focus:outline-none focus:border-sky-600 font-medium"
-                >
-                  <option value="">Seçin</option>
-                  <option value="male">Erkek</option>
-                  <option value="female">Kadın</option>
-                  <option value="other">Diğer</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-stone-700 mb-2">Tercih Ettiğiniz Uzman Cinsiyeti</label>
-                <select
-                  value={formData.preferredProviderGender}
-                  onChange={(e) => setFormData({ ...formData, preferredProviderGender: e.target.value })}
-                  className="w-full px-4 py-3 border-2 border-stone-200 rounded-lg focus:outline-none focus:border-sky-600 font-medium"
-                >
-                  <option value="">Fark Etmez</option>
-                  <option value="male">Erkek Uzman</option>
-                  <option value="female">Kadın Uzman</option>
-                </select>
+              <label className="text-sm font-bold text-stone-400 uppercase tracking-widest">Uzman Cinsiyet Tercihi</label>
+              <div className="grid grid-cols-3 gap-3">
+                {['Kadın', 'Erkek', 'Fark Etmez'].map(g => (
+                  <button
+                    key={g}
+                    onClick={() => setFormData({ ...formData, preferredProviderGender: g })}
+                    className={`p-4 rounded-2xl border-2 transition-all font-bold text-sm ${
+                      formData.preferredProviderGender === g 
+                        ? 'border-sky-600 bg-sky-50 text-sky-700' 
+                        : 'border-stone-100 bg-white text-stone-600'
+                    }`}
+                  >
+                    {g}
+                  </button>
+                ))}
               </div>
             </div>
 
-            <div className="flex gap-4 pt-4">
-              <button
-                onClick={prevStep}
-                className="flex-1 px-6 py-3 border-2 border-stone-200 rounded-lg hover:bg-stone-50 transition-colors font-semibold flex items-center justify-center gap-2"
-              >
-                <ArrowLeft size={20} />
-                Geri
+            <div className="flex justify-between pt-4">
+              <button onClick={prevStep} className="flex items-center gap-2 text-stone-500 font-bold px-6 py-3">
+                <ArrowLeft size={20} /> Geri
               </button>
-              <button
-                onClick={nextStep}
-                className="flex-1 px-6 py-3 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition-colors font-semibold flex items-center justify-center gap-2"
+              <button 
+                disabled={!formData.userGender || !formData.preferredProviderGender}
+                onClick={nextStep} 
+                className="bg-stone-900 text-white px-8 py-3 rounded-2xl font-bold flex items-center gap-2 disabled:opacity-50"
               >
-                İleri
-                <ArrowRight size={20} />
+                Devam Et <ArrowRight size={20} />
               </button>
             </div>
           </motion.div>
         );
 
       case 4:
-        const cities = TURKISH_LOCATIONS.map(loc => loc.city);
-        const uniqueCities = Array.from(new Set(cities));
-        const selectedCity = formData.city;
-        const districts = selectedCity 
-          ? TURKISH_LOCATIONS.find(loc => loc.city === selectedCity)?.districts || []
-          : [];
+        const cities = Object.keys(TURKISH_LOCATIONS).sort();
+        const districts = formData.city ? TURKISH_LOCATIONS[formData.city] || [] : [];
 
         return (
           <motion.div 
@@ -435,31 +440,31 @@ const handleSubmit = async () => {
           >
             <div className="text-center space-y-2">
               <h2 className="text-2xl font-bold text-stone-900">Konum Bilgileri</h2>
-              <p className="text-stone-500">Hizmet alacağınız bölgeyi belirtin.</p>
+              <p className="text-stone-500">Hizmetin verileceği adresi belirtin.</p>
             </div>
-
+            
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-stone-700 mb-2">Şehir / İl</label>
-                <select
-                  value={formData.city}
-                  onChange={(e) => setFormData({ ...formData, city: e.target.value, district: '' })}
-                  className="w-full px-4 py-3 border-2 border-stone-200 rounded-lg focus:outline-none focus:border-sky-600 font-medium"
-                >
-                  <option value="">Şehir Seçin</option>
-                  {uniqueCities.map(city => (
-                    <option key={city} value={city}>{city}</option>
-                  ))}
-                </select>
-              </div>
-
-              {districts.length > 0 && (
-                <div>
-                  <label className="block text-sm font-semibold text-stone-700 mb-2">İlçe / Bölge</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-stone-700">Şehir</label>
                   <select
+                    className="w-full p-4 rounded-2xl border border-stone-200 focus:border-sky-600 outline-none bg-white"
+                    value={formData.city}
+                    onChange={(e) => setFormData({ ...formData, city: e.target.value, district: '' })}
+                  >
+                    <option value="">Şehir Seçin</option>
+                    {cities.map(city => (
+                      <option key={city} value={city}>{city}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-stone-700">İlçe</label>
+                  <select
+                    className="w-full p-4 rounded-2xl border border-stone-200 focus:border-sky-600 outline-none bg-white disabled:opacity-50"
                     value={formData.district}
+                    disabled={!formData.city}
                     onChange={(e) => setFormData({ ...formData, district: e.target.value })}
-                    className="w-full px-4 py-3 border-2 border-stone-200 rounded-lg focus:outline-none focus:border-sky-600 font-medium"
                   >
                     <option value="">İlçe Seçin</option>
                     {districts.map(district => (
@@ -467,34 +472,29 @@ const handleSubmit = async () => {
                     ))}
                   </select>
                 </div>
-              )}
-
-              <div>
-                <label className="block text-sm font-semibold text-stone-700 mb-2">Mahalle / Cadde (İsteğe Bağlı)</label>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-stone-700">Mahalle</label>
                 <input
                   type="text"
+                  placeholder="Örn: Bebek Mah."
+                  className="w-full p-4 rounded-2xl border border-stone-200 focus:border-sky-600 outline-none"
                   value={formData.neighborhood}
                   onChange={(e) => setFormData({ ...formData, neighborhood: e.target.value })}
-                  placeholder="Örn: Kadıköy, Bağdat Caddesi"
-                  className="w-full px-4 py-3 border-2 border-stone-200 rounded-lg focus:outline-none focus:border-sky-600 font-medium"
                 />
               </div>
             </div>
 
-            <div className="flex gap-4 pt-4">
-              <button
-                onClick={prevStep}
-                className="flex-1 px-6 py-3 border-2 border-stone-200 rounded-lg hover:bg-stone-50 transition-colors font-semibold flex items-center justify-center gap-2"
-              >
-                <ArrowLeft size={20} />
-                Geri
+            <div className="flex justify-between pt-4">
+              <button onClick={prevStep} className="flex items-center gap-2 text-stone-500 font-bold px-6 py-3">
+                <ArrowLeft size={20} /> Geri
               </button>
-              <button
-                onClick={nextStep}
-                className="flex-1 px-6 py-3 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition-colors font-semibold flex items-center justify-center gap-2"
+              <button 
+                disabled={!formData.city || !formData.district || !formData.neighborhood}
+                onClick={nextStep} 
+                className="bg-stone-900 text-white px-8 py-3 rounded-2xl font-bold flex items-center gap-2 disabled:opacity-50"
               >
-                İleri
-                <ArrowRight size={20} />
+                Devam Et <ArrowRight size={20} />
               </button>
             </div>
           </motion.div>
@@ -508,71 +508,106 @@ const handleSubmit = async () => {
             className="space-y-6"
           >
             <div className="text-center space-y-2">
-              <h2 className="text-2xl font-bold text-stone-900">Hizmet Detayları</h2>
-              <p className="text-stone-500">Hizmet almak istediğiniz zaman ve diğer detayları belirtin.</p>
+              <h2 className="text-2xl font-bold text-stone-900">Zamanlama</h2>
+              <p className="text-stone-500">Hizmeti ne zaman ve ne kadar süreyle almak istersiniz?</p>
             </div>
-
+            
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-stone-700 mb-2">Başlama Tarihi</label>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-stone-700">Ne zaman başlamak istersiniz?</label>
                 <input
-                  type="date"
+                  type="text"
+                  placeholder="Örn: Gelecek hafta başı, En kısa sürede..."
+                  className="w-full p-4 rounded-2xl border border-stone-200 focus:border-sky-600 outline-none"
                   value={formData.startDate}
                   onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                  className="w-full px-4 py-3 border-2 border-stone-200 rounded-lg focus:outline-none focus:border-sky-600 font-medium"
                 />
               </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-stone-700 mb-2">Süre (Hafta)</label>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-stone-700">Ne kadar süre/sıklıkla?</label>
                 <input
-                  type="number"
-                  min="1"
+                  type="text"
+                  placeholder="Örn: 10 seans, Haftada 2 gün, 1 ay boyunca..."
+                  className="w-full p-4 rounded-2xl border border-stone-200 focus:border-sky-600 outline-none"
                   value={formData.duration}
                   onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
-                  placeholder="Örn: 4"
-                  className="w-full px-4 py-3 border-2 border-stone-200 rounded-lg focus:outline-none focus:border-sky-600 font-medium"
                 />
               </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-stone-700 mb-2">Telefon Numarası</label>
-                <input
-                  type="tel"
-                  value={formData.phoneNumber}
-                  onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
-                  placeholder="+90 5XX XXX XX XX"
-                  className="w-full px-4 py-3 border-2 border-stone-200 rounded-lg focus:outline-none focus:border-sky-600 font-medium"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-stone-700 mb-2">İsteğiniz Hakkında Detay</label>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-stone-700">Ek Notlar (Opsiyonel)</label>
                 <textarea
+                  placeholder="Uzmanın bilmesini istediğiniz diğer detaylar..."
+                  className="w-full p-4 rounded-2xl border border-stone-200 focus:border-sky-600 outline-none h-24"
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Örn: Haftada 2 gün, akşam saatleri tercih ediyorum..."
-                  rows={4}
-                  className="w-full px-4 py-3 border-2 border-stone-200 rounded-lg focus:outline-none focus:border-sky-600 font-medium"
                 />
               </div>
             </div>
 
-            <div className="flex gap-4 pt-4">
-              <button
-                onClick={prevStep}
-                className="flex-1 px-6 py-3 border-2 border-stone-200 rounded-lg hover:bg-stone-50 transition-colors font-semibold flex items-center justify-center gap-2"
-              >
-                <ArrowLeft size={20} />
-                Geri
+            <div className="flex justify-between pt-4">
+              <button onClick={prevStep} className="flex items-center gap-2 text-stone-500 font-bold px-6 py-3">
+                <ArrowLeft size={20} /> Geri
               </button>
-              <button
-                onClick={handleSubmit}
-                disabled={loading}
-                className="flex-1 px-6 py-3 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition-colors font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
+              <button 
+                disabled={!formData.startDate || !formData.duration}
+                onClick={nextStep} 
+                className="bg-stone-900 text-white px-8 py-3 rounded-2xl font-bold flex items-center gap-2 disabled:opacity-50"
               >
-                {loading ? 'Gönderiliyor...' : 'Gönder'}
-                <CheckCircle2 size={20} />
+                Devam Et <ArrowRight size={20} />
+              </button>
+            </div>
+          </motion.div>
+        );
+
+      case 6:
+        return (
+          <motion.div 
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="space-y-8"
+          >
+            <div className="text-center space-y-2">
+              <h2 className="text-2xl font-bold text-stone-900">İletişim ve Onay</h2>
+              <p className="text-stone-500">Talebinizi tamamlamadan önce son bir adım.</p>
+            </div>
+            
+            <div className="bg-stone-50 p-6 rounded-3xl space-y-6">
+              <div className="flex items-start gap-4">
+                <div className="p-3 bg-white rounded-2xl shadow-sm">
+                  <Phone className="text-sky-600" size={24} />
+                </div>
+                <div className="flex-1 space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-stone-700">Telefon Numaranız</label>
+                    <input
+                      type="tel"
+                      placeholder="05XX XXX XX XX"
+                      className="w-full p-4 rounded-2xl border border-stone-200 focus:border-sky-600 outline-none bg-white"
+                      value={formData.phoneNumber}
+                      onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
+                    />
+                  </div>
+                  <div className="flex items-start gap-2 text-sm text-stone-500 bg-white/50 p-3 rounded-xl border border-stone-100">
+                    <Info size={16} className="shrink-0 mt-0.5" />
+                    <p>
+                      Telefon numaranız sadece sistem yöneticisi tarafından görülebilir ve sizinle iletişime geçmek için kullanılabilir.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-between pt-4">
+              <button onClick={prevStep} className="flex items-center gap-2 text-stone-500 font-bold px-6 py-3">
+                <ArrowLeft size={20} /> Geri
+              </button>
+              <button 
+                disabled={loading || !formData.phoneNumber}
+                onClick={handleSubmit} 
+                className="flex-1 bg-emerald-600 text-white px-8 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-100 disabled:opacity-50"
+              >
+                {loading ? 'Gönderiliyor...' : 'Talebi Gönder'}
+                <ArrowRight size={20} />
               </button>
             </div>
           </motion.div>
@@ -583,56 +618,65 @@ const handleSubmit = async () => {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-stone-50 to-white p-6">
-      <div className="max-w-2xl mx-auto">
-        {success ? (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="text-center space-y-4 py-12"
-          >
-            <CheckCircle className="w-16 h-16 text-green-500 mx-auto" />
-            <h2 className="text-3xl font-bold text-stone-900">Talebiniz Başarıyla Gönderildi!</h2>
-            <p className="text-stone-600 text-lg">
-              Talep No: <span className="font-bold text-sky-600">#{numericId}</span>
-            </p>
+  if (success) {
+    return (
+      <div className="min-h-[80vh] flex items-center justify-center py-12 px-4">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="w-full max-w-xl bg-white rounded-[3rem] shadow-2xl p-12 text-center space-y-8 border border-stone-100"
+        >
+          <div className="w-24 h-24 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
+            <CheckCircle size={48} />
+          </div>
+          
+          <div className="space-y-4">
+            <h2 className="text-3xl font-bold text-stone-900">Talebiniz oluşturuldu</h2>
             <p className="text-stone-500">
-              Uzmanlar talebinizi inceleyecek ve en kısa sürede sizinle iletişime geçecekler.
+              Talebiniz başarıyla sisteme kaydedildi. Uzmanlar en kısa sürede sizinle iletişime geçecektir.
             </p>
-            <p className="text-sm text-stone-400 pt-4">
-              5 saniye içinde ana sayfaya yönlendirileceksiniz...
-            </p>
-          </motion.div>
-        ) : (
-          <>
-            <div className="mb-8">
-              <div className="flex justify-between mb-4">
-                {[1, 2, 3, 4, 5].map((s) => (
-                  <div
-                    key={s}
-                    className={`flex-1 h-2 mx-1 rounded-full transition-colors ${
-                      s <= step ? 'bg-sky-600' : 'bg-stone-200'
-                    }`}
-                  />
-                ))}
-              </div>
-              <p className="text-sm text-stone-600 text-center">
-                Adım {step} / 5
-              </p>
-            </div>
+          </div>
 
-            <AnimatePresence mode="wait">
-              <div key={step}>
-                {renderStep()}
-              </div>
-            </AnimatePresence>
-          </>
-        )}
+          <div className="bg-stone-50 p-6 rounded-3xl space-y-2">
+            <p className="text-sm font-bold text-stone-400 uppercase tracking-widest">Talep Numarası</p>
+            <p className="text-2xl font-mono font-bold text-stone-900">Talep #{numericId}</p>
+            <p className="text-[10px] text-stone-400 truncate">Sistem Kimliği: {requestId}</p>
+          </div>
+
+          <div className="space-y-4">
+            <Link 
+              to="/" 
+              className="block w-full bg-stone-900 text-white py-4 rounded-2xl font-bold hover:bg-stone-800 transition-all"
+            >
+              Ana sayfaya dön
+            </Link>
+            <p className="text-xs text-stone-400">
+              10 saniye içinde otomatik olarak ana sayfaya yönlendirileceksiniz...
+            </p>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-[80vh] flex items-center justify-center py-12">
+      <div className="w-full max-w-3xl bg-white rounded-[3rem] shadow-2xl shadow-stone-200/50 overflow-hidden border border-stone-100">
+        {/* Progress Bar */}
+        <div className="h-2 bg-stone-50 w-full">
+          <motion.div 
+            initial={{ width: 0 }}
+            animate={{ width: `${(step / 6) * 100}%` }}
+            className="h-full bg-sky-600"
+          />
+        </div>
+
+        <div className="p-8 md:p-12">
+          {renderStep()}
+        </div>
       </div>
     </div>
   );
 };
 
 export default CreateRequest;
-
