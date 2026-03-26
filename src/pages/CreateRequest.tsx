@@ -289,7 +289,7 @@ const CreateRequest: React.FC = () => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             to: [providerData.email],
-            subject: `Yeni Talep: ${selectedServices.join(', ')}`,
+            subject: `[TALEP #${newNumericId}] Yeni Talep: ${selectedServices.join(', ')}`,
             html: `
               <div style="font-family: sans-serif; line-height: 1.6; color: #333;">
                 <h2>Sayın Uzman,</h2>
@@ -316,7 +316,7 @@ const CreateRequest: React.FC = () => {
           isim: profile?.displayName ?? user.displayName ?? 'İsimsiz Kullanıcı',
           telefon: formData.phoneNumber,
           brans: selectedServices.join(', '),
-          subject: `[YENİ TALEP KOPYASI] - ${selectedServices.join(', ')}`,
+          subject: `[TALEP #${newNumericId}] [YENİ TALEP KOPYASI] - ${selectedServices.join(', ')}`,
           html: `
             <div style="font-family: sans-serif; line-height: 1.6; color: #333;">
               <h2 style="color: #2563eb;">Yeni Talep Detayları</h2>

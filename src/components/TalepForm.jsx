@@ -18,7 +18,8 @@ export default function TalepForm() {
     setSonuc("");
 
     try {
-      console.log("Submitting TalepForm:", { isim, telefon, brans, sehir, ilce });
+      const quickId = Math.floor(1000 + Math.random() * 9000);
+      console.log("Submitting TalepForm:", { isim, telefon, brans, sehir, ilce, quickId });
       const response = await fetch("/api/send-mail", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -26,7 +27,8 @@ export default function TalepForm() {
           isim, 
           telefon, 
           brans, 
-          mesaj: `Şehir: ${sehir}\nİlçe: ${ilce}\n\nMesaj: ${mesaj}` 
+          mesaj: `Şehir: ${sehir}\nİlçe: ${ilce}\n\nMesaj: ${mesaj}`,
+          subject: `[HIZLI TALEP #${quickId}] - ${brans}`
         }),
       });
 
