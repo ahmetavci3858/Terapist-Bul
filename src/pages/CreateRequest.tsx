@@ -105,6 +105,14 @@ const SERVICE_GOALS: Record<string, string[]> = {
   ],
 };
 
+const ALL_SERVICES = [
+  'Fizyoterapist',
+  'Diyetisyen',
+  'Psikolog',
+  'Ergoterapist',
+  'Dil ve Konuşma Terapisti',
+];
+
 const CreateRequest: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -118,6 +126,7 @@ const CreateRequest: React.FC = () => {
   const [numericId, setNumericId] = useState<number | null>(null);
 
   const [formData, setFormData] = useState({
+    serviceTypes: selectedServices,
     locationType: '',
     goals: [] as string[],
     userGender: '',
@@ -359,7 +368,7 @@ const CreateRequest: React.FC = () => {
         );
 
       case 2:
-        const allGoals = selectedServices.flatMap(
+        const allGoals = formData.serviceTypes.flatMap(
           (s) => SERVICE_GOALS[s] ?? []
         );
         const uniqueGoals = Array.from(new Set(allGoals));
@@ -396,6 +405,7 @@ const CreateRequest: React.FC = () => {
                       : 'border-stone-100 hover:border-stone-200 bg-white text-stone-700'
                   }`}
                 >
+                  <span className="font-semibold">{goal}</span>
                   {formData.goals.includes(goal) && (
                     <CheckCircle2 size={20} className="text-sky-600" />
                   )}
