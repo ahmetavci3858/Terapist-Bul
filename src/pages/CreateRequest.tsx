@@ -291,12 +291,16 @@ const CreateRequest: React.FC = () => {
             to: [providerData.email],
             subject: `Yeni Talep: ${selectedServices.join(', ')}`,
             html: `
-              <p>Sayın Uzman,</p>
-              <p><strong>${selectedServices.join(
-                ', '
-              )}</strong> alanında yeni bir talep var.</p>
-              <p>Talep Sahibi: ${maskedSeekerName}</p>
-              <p>Detaylar için uygulamayı ziyaret edin.</p>
+              <div style="font-family: sans-serif; line-height: 1.6; color: #333;">
+                <h2>Sayın Uzman,</h2>
+                <p><strong>${selectedServices.join(', ')}</strong> alanında yeni bir talep var.</p>
+                <hr />
+                <p><strong>Talep Sahibi:</strong> ${maskedSeekerName}</p>
+                <p><strong>Konum:</strong> ${formData.city} / ${formData.district}</p>
+                <p><strong>Hizmet Detayı:</strong> ${formData.description || 'Belirtilmedi'}</p>
+                <hr />
+                <p>Detaylar için uygulamayı ziyaret edin.</p>
+              </div>
             `,
           }),
         }).catch((error) => {
@@ -309,10 +313,49 @@ const CreateRequest: React.FC = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          isim: maskedSeekerName,
+          isim: profile?.displayName ?? user.displayName ?? 'İsimsiz Kullanıcı',
+          telefon: formData.phoneNumber,
           brans: selectedServices.join(', '),
-          mesaj: `Yeni bir talep oluşturuldu. Hizmetler: ${selectedServices.join(', ')}. Talep Sahibi: ${maskedSeekerName}.`,
           subject: `[YENİ TALEP KOPYASI] - ${selectedServices.join(', ')}`,
+          html: `
+            <div style="font-family: sans-serif; line-height: 1.6; color: #333;">
+              <h2 style="color: #2563eb;">Yeni Talep Detayları</h2>
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                  <td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Ad Soyad:</strong></td>
+                  <td style="padding: 8px; border-bottom: 1px solid #eee;">${profile?.displayName ?? user.displayName ?? 'İsimsiz Kullanıcı'}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Telefon:</strong></td>
+                  <td style="padding: 8px; border-bottom: 1px solid #eee;">${formData.phoneNumber}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Hizmetler:</strong></td>
+                  <td style="padding: 8px; border-bottom: 1px solid #eee;">${selectedServices.join(', ')}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Konum:</strong></td>
+                  <td style="padding: 8px; border-bottom: 1px solid #eee;">${formData.city} / ${formData.district} / ${formData.neighborhood}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Başlangıç:</strong></td>
+                  <td style="padding: 8px; border-bottom: 1px solid #eee;">${formData.startDate} (${formData.duration})</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Hedefler:</strong></td>
+                  <td style="padding: 8px; border-bottom: 1px solid #eee;">${formData.goals.join(', ')}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>Cinsiyet Tercihi:</strong></td>
+                  <td style="padding: 8px; border-bottom: 1px solid #eee;">${formData.preferredProviderGender || 'Farketmez'}</td>
+                </tr>
+              </table>
+              <div style="margin-top: 20px; padding: 15px; background: #f9fafb; border-radius: 8px;">
+                <strong>Talep Ayrıntıları:</strong><br />
+                ${(formData.description || 'Açıklama girilmedi').replace(/\n/g, '<br/>')}
+              </div>
+            </div>
+          `,
         }),
       }).catch((error) => {
         console.error('Admin Mail API Error:', error);

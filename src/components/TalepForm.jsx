@@ -4,6 +4,8 @@ export default function TalepForm() {
   // STATE
   const [isim, setIsim] = useState("");
   const [telefon, setTelefon] = useState("");
+  const [sehir, setSehir] = useState("");
+  const [ilce, setIlce] = useState("");
   const [brans, setBrans] = useState("");
   const [mesaj, setMesaj] = useState("");
   const [loading, setLoading] = useState(false);
@@ -16,11 +18,16 @@ export default function TalepForm() {
     setSonuc("");
 
     try {
-      console.log("Submitting TalepForm:", { isim, telefon, brans });
+      console.log("Submitting TalepForm:", { isim, telefon, brans, sehir, ilce });
       const response = await fetch("/api/send-mail", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isim, telefon, brans, mesaj }),
+        body: JSON.stringify({ 
+          isim, 
+          telefon, 
+          brans, 
+          mesaj: `Şehir: ${sehir}\nİlçe: ${ilce}\n\nMesaj: ${mesaj}` 
+        }),
       });
 
       const data = await response.json();
@@ -30,6 +37,8 @@ export default function TalepForm() {
         setSonuc("Talep başarıyla gönderildi!");
         setIsim("");
         setTelefon("");
+        setSehir("");
+        setIlce("");
         setBrans("");
         setMesaj("");
       } else {
@@ -67,6 +76,25 @@ export default function TalepForm() {
         className="w-full p-3 border rounded-xl"
         required
       />
+
+      <div className="grid grid-cols-2 gap-4">
+        <input
+          type="text"
+          placeholder="Şehir"
+          value={sehir}
+          onChange={(e) => setSehir(e.target.value)}
+          className="w-full p-3 border rounded-xl"
+          required
+        />
+        <input
+          type="text"
+          placeholder="İlçe"
+          value={ilce}
+          onChange={(e) => setIlce(e.target.value)}
+          className="w-full p-3 border rounded-xl"
+          required
+        />
+      </div>
 
       <select
         value={brans}
