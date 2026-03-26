@@ -16,7 +16,7 @@ export default function TalepForm() {
     setSonuc("");
 
     try {
-      const response = await fetch("/api/send-mail", {
+      const response = await fetch("/api/send-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isim, telefon, brans, mesaj }),
