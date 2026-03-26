@@ -325,5 +325,314 @@ const handleSubmit = async () => {
                     const newGoals = formData.goals.includes(goal)
                       ? formData.goals.filter(g => g !== goal)
                       : [...formData.goals, goal];
-                    setFormData({ ...formData, goals: newGoals });
+                   setFormData({ ...formData, goals: newGoals });
+                      })
+                    }}
+                    className={`p-6 rounded-lg border-2 transition-all ${
+                      formData.goals.includes(goal)
+                        ? 'border-sky-600 bg-sky-50 text-sky-700'
+                        : 'border-stone-100 hover:border-stone-200 bg-white text-stone-600'
+                    }`}
+                  >
+                    <Target size={24} />
+                    <span className="font-semibold text-sm">{goal}</span>
+                  </button>
+                ))
+              }
+            </div>
+            <div className="flex gap-4 pt-4">
+              <button
+                onClick={prevStep}
+                className="flex-1 px-6 py-3 border-2 border-stone-200 rounded-lg hover:bg-stone-50 transition-colors font-semibold flex items-center justify-center gap-2"
+              >
+                <ArrowLeft size={20} />
+                Geri
+              </button>
+              <button
+                onClick={nextStep}
+                className="flex-1 px-6 py-3 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition-colors font-semibold flex items-center justify-center gap-2"
+              >
+                İleri
+                <ArrowRight size={20} />
+              </button>
+            </div>
+          </motion.div>
+        );
+
+      case 3:
+        return (
+          <motion.div 
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="space-y-6"
+          >
+            <div className="text-center space-y-2">
+              <h2 className="text-2xl font-bold text-stone-900">Demografik Bilgiler</h2>
+              <p className="text-stone-500">Uzmanın sizin için en uygun şekilde hazırlanması için bilgiler gerekli.</p>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-stone-700 mb-2">Cinsiyetiniz</label>
+                <select
+                  value={formData.userGender}
+                  onChange={(e) => setFormData({ ...formData, userGender: e.target.value })}
+                  className="w-full px-4 py-3 border-2 border-stone-200 rounded-lg focus:outline-none focus:border-sky-600 font-medium"
+                >
+                  <option value="">Seçin</option>
+                  <option value="male">Erkek</option>
+                  <option value="female">Kadın</option>
+                  <option value="other">Diğer</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-stone-700 mb-2">Tercih Ettiğiniz Uzman Cinsiyeti</label>
+                <select
+                  value={formData.preferredProviderGender}
+                  onChange={(e) => setFormData({ ...formData, preferredProviderGender: e.target.value })}
+                  className="w-full px-4 py-3 border-2 border-stone-200 rounded-lg focus:outline-none focus:border-sky-600 font-medium"
+                >
+                  <option value="">Fark Etmez</option>
+                  <option value="male">Erkek Uzman</option>
+                  <option value="female">Kadın Uzman</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex gap-4 pt-4">
+              <button
+                onClick={prevStep}
+                className="flex-1 px-6 py-3 border-2 border-stone-200 rounded-lg hover:bg-stone-50 transition-colors font-semibold flex items-center justify-center gap-2"
+              >
+                <ArrowLeft size={20} />
+                Geri
+              </button>
+              <button
+                onClick={nextStep}
+                className="flex-1 px-6 py-3 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition-colors font-semibold flex items-center justify-center gap-2"
+              >
+                İleri
+                <ArrowRight size={20} />
+              </button>
+            </div>
+          </motion.div>
+        );
+
+      case 4:
+        const cities = TURKISH_LOCATIONS.map(loc => loc.city);
+        const uniqueCities = Array.from(new Set(cities));
+        const selectedCity = formData.city;
+        const districts = selectedCity 
+          ? TURKISH_LOCATIONS.find(loc => loc.city === selectedCity)?.districts || []
+          : [];
+
+        return (
+          <motion.div 
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="space-y-6"
+          >
+            <div className="text-center space-y-2">
+              <h2 className="text-2xl font-bold text-stone-900">Konum Bilgileri</h2>
+              <p className="text-stone-500">Hizmet alacağınız bölgeyi belirtin.</p>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-stone-700 mb-2">Şehir / İl</label>
+                <select
+                  value={formData.city}
+                  onChange={(e) => setFormData({ ...formData, city: e.target.value, district: '' })}
+                  className="w-full px-4 py-3 border-2 border-stone-200 rounded-lg focus:outline-none focus:border-sky-600 font-medium"
+                >
+                  <option value="">Şehir Seçin</option>
+                  {uniqueCities.map(city => (
+                    <option key={city} value={city}>{city}</option>
+                  ))}
+                </select>
+              </div>
+
+              {districts.length > 0 && (
+                <div>
+                  <label className="block text-sm font-semibold text-stone-700 mb-2">İlçe / Bölge</label>
+                  <select
+                    value={formData.district}
+                    onChange={(e) => setFormData({ ...formData, district: e.target.value })}
+                    className="w-full px-4 py-3 border-2 border-stone-200 rounded-lg focus:outline-none focus:border-sky-600 font-medium"
+                  >
+                    <option value="">İlçe Seçin</option>
+                    {districts.map(district => (
+                      <option key={district} value={district}>{district}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-semibold text-stone-700 mb-2">Mahalle / Cadde (İsteğe Bağlı)</label>
+                <input
+                  type="text"
+                  value={formData.neighborhood}
+                  onChange={(e) => setFormData({ ...formData, neighborhood: e.target.value })}
+                  placeholder="Örn: Kadıköy, Bağdat Caddesi"
+                  className="w-full px-4 py-3 border-2 border-stone-200 rounded-lg focus:outline-none focus:border-sky-600 font-medium"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-4 pt-4">
+              <button
+                onClick={prevStep}
+                className="flex-1 px-6 py-3 border-2 border-stone-200 rounded-lg hover:bg-stone-50 transition-colors font-semibold flex items-center justify-center gap-2"
+              >
+                <ArrowLeft size={20} />
+                Geri
+              </button>
+              <button
+                onClick={nextStep}
+                className="flex-1 px-6 py-3 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition-colors font-semibold flex items-center justify-center gap-2"
+              >
+                İleri
+                <ArrowRight size={20} />
+              </button>
+            </div>
+          </motion.div>
+        );
+
+      case 5:
+        return (
+          <motion.div 
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="space-y-6"
+          >
+            <div className="text-center space-y-2">
+              <h2 className="text-2xl font-bold text-stone-900">Hizmet Detayları</h2>
+              <p className="text-stone-500">Hizmet almak istediğiniz zaman ve diğer detayları belirtin.</p>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-stone-700 mb-2">Başlama Tarihi</label>
+                <input
+                  type="date"
+                  value={formData.startDate}
+                  onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                  className="w-full px-4 py-3 border-2 border-stone-200 rounded-lg focus:outline-none focus:border-sky-600 font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-stone-700 mb-2">Süre (Hafta)</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={formData.duration}
+                  onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
+                  placeholder="Örn: 4"
+                  className="w-full px-4 py-3 border-2 border-stone-200 rounded-lg focus:outline-none focus:border-sky-600 font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-stone-700 mb-2">Telefon Numarası</label>
+                <input
+                  type="tel"
+                  value={formData.phoneNumber}
+                  onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
+                  placeholder="+90 5XX XXX XX XX"
+                  className="w-full px-4 py-3 border-2 border-stone-200 rounded-lg focus:outline-none focus:border-sky-600 font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-stone-700 mb-2">İsteğiniz Hakkında Detay</label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Örn: Haftada 2 gün, akşam saatleri tercih ediyorum..."
+                  rows={4}
+                  className="w-full px-4 py-3 border-2 border-stone-200 rounded-lg focus:outline-none focus:border-sky-600 font-medium"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-4 pt-4">
+              <button
+                onClick={prevStep}
+                className="flex-1 px-6 py-3 border-2 border-stone-200 rounded-lg hover:bg-stone-50 transition-colors font-semibold flex items-center justify-center gap-2"
+              >
+                <ArrowLeft size={20} />
+                Geri
+              </button>
+              <button
+                onClick={handleSubmit}
+                disabled={loading}
+                className="flex-1 px-6 py-3 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition-colors font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {loading ? 'Gönderiliyor...' : 'Gönder'}
+                <CheckCircle2 size={20} />
+              </button>
+            </div>
+          </motion.div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-stone-50 to-white p-6">
+      <div className="max-w-2xl mx-auto">
+        {success ? (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="text-center space-y-4 py-12"
+          >
+            <CheckCircle className="w-16 h-16 text-green-500 mx-auto" />
+            <h2 className="text-3xl font-bold text-stone-900">Talebiniz Başarıyla Gönderildi!</h2>
+            <p className="text-stone-600 text-lg">
+              Talep No: <span className="font-bold text-sky-600">#{numericId}</span>
+            </p>
+            <p className="text-stone-500">
+              Uzmanlar talebinizi inceleyecek ve en kısa sürede sizinle iletişime geçecekler.
+            </p>
+            <p className="text-sm text-stone-400 pt-4">
+              5 saniye içinde ana sayfaya yönlendirileceksiniz...
+            </p>
+          </motion.div>
+        ) : (
+          <>
+            <div className="mb-8">
+              <div className="flex justify-between mb-4">
+                {[1, 2, 3, 4, 5].map((s) => (
+                  <div
+                    key={s}
+                    className={`flex-1 h-2 mx-1 rounded-full transition-colors ${
+                      s <= step ? 'bg-sky-600' : 'bg-stone-200'
+                    }`}
+                  />
+                ))}
+              </div>
+              <p className="text-sm text-stone-600 text-center">
+                Adım {step} / 5
+              </p>
+            </div>
+
+            <AnimatePresence mode="wait">
+              <div key={step}>
+                {renderStep()}
+              </div>
+            </AnimatePresence>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default CreateRequest;
 
