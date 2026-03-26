@@ -10,7 +10,7 @@ export default async function handler(req, res) {
   const { isim, telefon, brans, mesaj } = req.body;
 
   try {
-    const data = await resend.emails.send({
+    const { data, error } = await resend.emails.send({
       from: "Terapist Bul <onboarding@resend.dev>",
       to: ["ahmetavci3858@gmail.com"],
       subject: `[SİTE TALEBİ] - ${brans}`,
@@ -22,6 +22,10 @@ export default async function handler(req, res) {
         <p><strong>Mesaj:</strong><br>${mesaj.replace(/\n/g, "<br/>")}</p>
       `
     });
+
+    if (error) {
+      return res.status(400).json({ error: error.message });
+    }
 
     return res.status(200).json({ success: true, id: data.id });
   } catch (err) {

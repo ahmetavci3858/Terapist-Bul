@@ -17,6 +17,7 @@ import {
   Clock
 } from 'lucide-react';
 import QuickServiceSearch from '../components/QuickServiceSearch';
+import TalepForm from '../components/TalepForm';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../firebase';
 import { collection, query, where, onSnapshot, orderBy, limit } from 'firebase/firestore';
@@ -423,6 +424,15 @@ const Home: React.FC = () => {
             />
           </div>
         </div>
+      </section>
+
+      {/* Uzman Talep Formu Section */}
+      <section className="max-w-4xl mx-auto px-4 py-12">
+        <div className="text-center space-y-4 mb-12">
+          <h2 className="text-4xl font-bold text-stone-900">Hızlı Uzman Talebi</h2>
+          <p className="text-stone-600">Aradığınız hizmeti bulamadınız mı? Formu doldurun, biz size en uygun uzmanı bulalım.</p>
+        </div>
+        <TalepForm />
       </section>
     </div>
   );

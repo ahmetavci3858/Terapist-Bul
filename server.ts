@@ -2,6 +2,8 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
 import { fileURLToPath } from "url";
+import "dotenv/config";
+import sendMailHandler from "./api/send-mail.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -10,15 +12,16 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
+  // Middleware
+  app.use(express.json());
+
   // API routes
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
   });
 
-  // Placeholder for the user's send-email API
-  app.post("/api/send-email", (req, res) => {
-    res.json({ message: "Email API placeholder" });
-  });
+  // Mail API
+  app.post("/api/send-mail", sendMailHandler);
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
