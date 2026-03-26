@@ -77,7 +77,9 @@ const AuthPage: React.FC = () => {
         message = 'Giriş penceresi kapatıldı. Lütfen tekrar deneyin.';
       } else if (error.code === 'auth/unauthorized-domain') {
         const currentDomain = window.location.hostname;
-        message = `Bu alan adı (${currentDomain}) Firebase konsolunda yetkilendirilmemiş. Lütfen Firebase konsolundan Authentication > Settings > Authorized Domains kısmına bu adresi ekleyin.`;
+        const appUrl = 'ais-dev-2he3n4zrm4jebotnapjh3n-44433785094.europe-west2.run.app';
+        const sharedUrl = 'ais-pre-2he3n4zrm4jebotnapjh3n-44433785094.europe-west2.run.app';
+        message = `Bu alan adı (${currentDomain}) Firebase konsolunda yetkilendirilmemiş. Lütfen Firebase konsolundan Authentication > Settings > Authorized Domains kısmına hem "${appUrl}" hem de "${sharedUrl}" adreslerini ekleyin.`;
       } else if (error.code === 'auth/operation-not-allowed') {
         message = 'Google ile giriş yöntemi Firebase konsolunda (Authentication > Sign-in method) henüz etkinleştirilmemiş.';
       } else if (error.code === 'auth/popup-blocked') {
