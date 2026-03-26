@@ -280,17 +280,16 @@ const CreateRequest: React.FC = () => {
         profile?.displayName ?? user.displayName ?? 'İsimsiz Kullanıcı'
       );
 
-      // 4. EMAILS
+      // 4. EMAILS (via Resend API)
       const mailPromises = providersSnap.docs.map((providerDoc) => {
         const providerData = providerDoc.data();
 
-        return addDoc(collection(db, 'mail'), {
-          to: providerData.email,
-          message: {
+        return fetch('/api/send-mail', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: [providerData.email],
             subject: `Yeni Talep: ${selectedServices.join(', ')}`,
-            text: `Sayın Uzman, ${selectedServices.join(
-              ', '
-            )} alanında yeni bir talep var. Talep Sahibi: ${maskedSeekerName}.`,
             html: `
               <p>Sayın Uzman,</p>
               <p><strong>${selectedServices.join(
@@ -299,13 +298,27 @@ const CreateRequest: React.FC = () => {
               <p>Talep Sahibi: ${maskedSeekerName}</p>
               <p>Detaylar için uygulamayı ziyaret edin.</p>
             `,
-          },
+          }),
         }).catch((error) => {
-          handleFirestoreError(error, OperationType.CREATE, 'mail');
+          console.error('Mail API Error:', error);
         });
       });
 
-      await Promise.all([...notificationPromises, ...mailPromises]);
+      // 5. ADMIN COPY
+      const adminMailPromise = fetch('/api/send-mail', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          isim: maskedSeekerName,
+          brans: selectedServices.join(', '),
+          mesaj: `Yeni bir talep oluşturuldu. Hizmetler: ${selectedServices.join(', ')}. Talep Sahibi: ${maskedSeekerName}.`,
+          subject: `[YENİ TALEP KOPYASI] - ${selectedServices.join(', ')}`,
+        }),
+      }).catch((error) => {
+        console.error('Admin Mail API Error:', error);
+      });
+
+      await Promise.all([...notificationPromises, ...mailPromises, adminMailPromise]);
 
       // AUTO REDIRECT AFTER 10s
       setTimeout(() => {

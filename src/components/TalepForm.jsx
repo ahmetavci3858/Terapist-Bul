@@ -16,6 +16,7 @@ export default function TalepForm() {
     setSonuc("");
 
     try {
+      console.log("Submitting TalepForm:", { isim, telefon, brans });
       const response = await fetch("/api/send-mail", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -23,6 +24,7 @@ export default function TalepForm() {
       });
 
       const data = await response.json();
+      console.log("TalepForm response:", data);
 
       if (data.success) {
         setSonuc("Talep başarıyla gönderildi!");
