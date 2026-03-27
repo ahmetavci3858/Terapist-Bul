@@ -16,6 +16,8 @@ import Profile from './pages/Profile';
 import EditProfile from './pages/EditProfile';
 import Providers from './pages/Providers';
 import CreateRequest from './pages/CreateRequest';
+import Blog from './pages/Blog';
+import BlogPost from './pages/BlogPost';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading, profile } = useAuth();
@@ -59,6 +61,8 @@ const App: React.FC = () => {
               <Route path="/register/seeker" element={<RegisterSeeker />} />
               <Route path="/register/provider" element={<RegisterProvider />} />
               <Route path="/providers" element={<Providers />} />
+              <Route path="/blog" element={<Blog />} />
+              <Route path="/blog/:id" element={<BlogPost />} />
               <Route path="/create-request" element={<ProtectedRoute><CreateRequest /></ProtectedRoute>} />
               <Route path="/verification-pending" element={<VerificationPending />} />
               <Route path="/profile-setup" element={<ProtectedRoute><ProfileSetup /></ProtectedRoute>} />

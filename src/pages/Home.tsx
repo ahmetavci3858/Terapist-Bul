@@ -21,6 +21,7 @@ import TalepForm from '../components/TalepForm';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../firebase';
 import { collection, query, where, onSnapshot, orderBy, limit } from 'firebase/firestore';
+import { blogPosts } from '../data/blogPosts';
 
 interface ServiceRequest {
   id: string;
@@ -231,7 +232,7 @@ const Home: React.FC = () => {
                     
                     <div className="space-y-2">
                       <h3 className="font-bold text-stone-900 group-hover:text-sky-600 transition-colors line-clamp-1">
-                        {(req.serviceTypes || [req.serviceType || 'Hizmet']).join(', ')}
+                        {(req.serviceTypes || ['Hizmet']).join(', ')}
                       </h3>
                       <div className="flex items-center gap-2 text-sm text-stone-500">
                         <MapPin size={14} className="text-sky-600" />
@@ -249,7 +250,7 @@ const Home: React.FC = () => {
                         <span>{req.createdAt?.toDate().toLocaleDateString('tr-TR')}</span>
                       </div>
                       <a 
-                        href={`https://wa.me/905452050458?text=${encodeURIComponent(`Merhaba, ${req.id} numaralı ${(req.serviceTypes || [req.serviceType || 'Hizmet']).join(', ')} talebi hakkında bilgi almak istiyorum.`)}`}
+                        href={`https://wa.me/905452050458?text=${encodeURIComponent(`Merhaba, ${req.id} numaralı ${(req.serviceTypes || ['Hizmet']).join(', ')} talebi hakkında bilgi almak istiyorum.`)}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="bg-[#25D366] text-white px-5 py-2.5 rounded-xl text-xs font-bold hover:bg-[#128C7E] transition-all shadow-lg active:scale-95 flex items-center gap-1"
@@ -423,6 +424,71 @@ const Home: React.FC = () => {
               referrerPolicy="no-referrer"
             />
           </div>
+        </div>
+      </section>
+
+      {/* Blog Section */}
+      <section className="max-w-6xl mx-auto px-4 space-y-12">
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <h2 className="text-4xl font-bold text-stone-900">Blog & Sağlık Rehberi</h2>
+            <p className="text-stone-600">Uzmanlarımızdan güncel sağlık ve terapi yazıları.</p>
+          </div>
+          <Link to="/blog" className="text-sky-600 font-bold hover:underline flex items-center gap-1">
+            Tümünü Gör <ArrowRight size={18} />
+          </Link>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {blogPosts.slice(0, 3).map((post, i) => (
+            <motion.article
+              key={post.id}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.1 }}
+              className="group bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all border border-stone-100 flex flex-col"
+            >
+              <Link to={`/blog/${post.id}`} className="block overflow-hidden aspect-video relative">
+                <img 
+                  src={post.image} 
+                  alt={post.title}
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                  referrerPolicy="no-referrer"
+                />
+                <div className="absolute top-4 left-4">
+                  <span className="px-3 py-1 bg-white/90 backdrop-blur-sm text-stone-900 text-xs font-bold rounded-full shadow-sm">
+                    {post.category}
+                  </span>
+                </div>
+              </Link>
+              
+              <div className="p-6 flex flex-col flex-1">
+                <div className="flex items-center gap-4 text-xs text-stone-400 mb-3">
+                  <span className="flex items-center gap-1">
+                    <CalendarIcon size={14} /> {new Date(post.date).toLocaleDateString('tr-TR')}
+                  </span>
+                </div>
+                
+                <Link to={`/blog/${post.id}`}>
+                  <h3 className="text-xl font-bold text-stone-900 mb-3 group-hover:text-sky-600 transition-colors line-clamp-2">
+                    {post.title}
+                  </h3>
+                </Link>
+                
+                <p className="text-stone-600 text-sm mb-6 line-clamp-2 flex-1">
+                  {post.summary}
+                </p>
+                
+                <Link 
+                  to={`/blog/${post.id}`}
+                  className="inline-flex items-center gap-2 text-stone-900 font-bold text-sm hover:gap-3 transition-all"
+                >
+                  Devamını Oku <ArrowRight size={18} />
+                </Link>
+              </div>
+            </motion.article>
+          ))}
         </div>
       </section>
 

@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { auth } from '../firebase';
 import { signOut } from 'firebase/auth';
-import { User, LogOut, LayoutDashboard, Home, HeartPulse, ShieldCheck, ChevronDown, Settings, ClipboardList } from 'lucide-react';
+import { User, LogOut, LayoutDashboard, Home, HeartPulse, ShieldCheck, ChevronDown, Settings, ClipboardList, BookOpen } from 'lucide-react';
 
 const Navbar: React.FC = () => {
   const { user, profile } = useAuth();
@@ -40,6 +40,11 @@ const Navbar: React.FC = () => {
           <Link to="/" className="text-stone-600 hover:text-sky-600 transition-colors flex items-center gap-1">
             <Home size={18} />
             <span className="hidden sm:inline">Anasayfa</span>
+          </Link>
+
+          <Link to="/blog" className="text-stone-600 hover:text-sky-600 transition-colors flex items-center gap-1">
+            <BookOpen size={18} />
+            <span className="hidden sm:inline">Blog</span>
           </Link>
 
           {user ? (

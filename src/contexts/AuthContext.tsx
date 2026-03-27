@@ -24,6 +24,7 @@ interface UserProfile {
   weight?: number;
   status?: 'pending' | 'approved' | 'rejected';
   isVerified?: boolean;
+  setupComplete?: boolean;
 }
 
 interface AuthContextType {
