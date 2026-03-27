@@ -1,9 +1,49 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+
+  <!-- Ana Sayfa -->
   <url>
     <loc>https://terapistbul.com.tr/</loc>
-    <lastmod>2026-03-26</lastmod>
-    <changefreq>daily</changefreq>
     <priority>1.0</priority>
+    <changefreq>daily</changefreq>
   </url>
+
+  <!-- 1. Fizyoterapist -->
+  <url><loc>https://terapistbul.com.tr/hizmet/fizyoterapist/ortopedik-rehabilitasyon</loc></url>
+  <url><loc>https://terapistbul.com.tr/hizmet/fizyoterapist/norolojik-rehabilitasyon</loc></url>
+  <url><loc>https://terapistbul.com.tr/hizmet/fizyoterapist/pediatrik-rehabilitasyon</loc></url>
+  <url><loc>https://terapistbul.com.tr/hizmet/fizyoterapist/sporcu-rehabilitasyonu</loc></url>
+  <url><loc>https://terapistbul.com.tr/hizmet/fizyoterapist/evde-fizik-tedavi</loc></url>
+
+  <!-- 2. Diyetisyen -->
+  <url><loc>https://terapistbul.com.tr/hizmet/diyetisyen/surdurulebilir-kilo-yonetimi</loc></url>
+  <url><loc>https://terapistbul.com.tr/hizmet/diyetisyen/hastaliklarda-beslenme-tedavisi</loc></url>
+  <url><loc>https://terapistbul.com.tr/hizmet/diyetisyen/sporcu-beslenmesi</loc></url>
+  <url><loc>https://terapistbul.com.tr/hizmet/diyetisyen/anne-cocuk-beslenmesi</loc></url>
+  <url><loc>https://terapistbul.com.tr/hizmet/diyetisyen/eliminasyon-diyeti</loc></url>
+  <url><loc>https://terapistbul.com.tr/hizmet/diyetisyen/bariatrik-cerrahi-beslenmesi</loc></url>
+
+  <!-- 3. Psikolog -->
+  <url><loc>https://terapistbul.com.tr/hizmet/psikolog/bireysel-psikoterapi</loc></url>
+  <url><loc>https://terapistbul.com.tr/hizmet/psikolog/emdr-terapisi</loc></url>
+  <url><loc>https://terapistbul.com.tr/hizmet/psikolog/cift-ve-aile-terapisi</loc></url>
+  <url><loc>https://terapistbul.com.tr/hizmet/psikolog/cocuk-ve-ergen-terapisi</loc></url>
+  <url><loc>https://terapistbul.com.tr/hizmet/psikolog/cinsel-terapi</loc></url>
+  <url><loc>https://terapistbul.com.tr/hizmet/psikolog/duygu-odakli-terapi</loc></url>
+
+  <!-- 4. Ergoterapist -->
+  <url><loc>https://terapistbul.com.tr/hizmet/ergoterapist/duyu-butunleme-terapisi</loc></url>
+  <url><loc>https://terapistbul.com.tr/hizmet/ergoterapist/gunluk-yasam-aktiviteleri</loc></url>
+  <url><loc>https://terapistbul.com.tr/hizmet/ergoterapist/pediatrik-ergoterapi</loc></url>
+  <url><loc>https://terapistbul.com.tr/hizmet/ergoterapist/el-rehabilitasyonu</loc></url>
+  <url><loc>https://terapistbul.com.tr/hizmet/ergoterapist/bilissel-rehabilitasyon</loc></url>
+
+  <!-- 5. Dil ve Konuşma Terapisti -->
+  <url><loc>https://terapistbul.com.tr/hizmet/dil-ve-konusma/artikulasyon-bozukluklari</loc></url>
+  <url><loc>https://terapistbul.com.tr/hizmet/dil-ve-konusma/gecikmis-dil-ve-konusma</loc></url>
+  <url><loc>https://terapistbul.com.tr/hizmet/dil-ve-konusma/kekemelik</loc></url>
+  <url><loc>https://terapistbul.com.tr/hizmet/dil-ve-konusma/ses-bozukluklari</loc></url>
+  <url><loc>https://terapistbul.com.tr/hizmet/dil-ve-konusma/disfaji</loc></url>
+
 </urlset>
+   
